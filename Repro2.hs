@@ -9,7 +9,7 @@ import System.Environment (getArgs)
 import Control.Monad (forever)
 import Control.Exception
 import Control.Concurrent
-import Data.Time
+--import Data.Time
 import Control.Monad (when)
 
 
@@ -37,7 +37,7 @@ keepOpening availableNames toClose maybeDelete = do
   uninterruptibleMask $ \ restore -> do
     forever $ do
       filepath <- readChan availableNames
-      now <- getCurrentTime
+      --now <- getCurrentTime
       h <- (Just <$> restore (openFile filepath WriteMode)) `catch` \(e :: AsyncException) ->
           if e == ThreadKilled then do
             putStrLn "interrupt"
@@ -46,8 +46,8 @@ keepOpening availableNames toClose maybeDelete = do
             putStrLn "Other exc"
             print e
             throw e
-      elapsed <- (`diffUTCTime` now) <$> getCurrentTime
-      print elapsed
+      --elapsed <- (`diffUTCTime` now) <$> getCurrentTime
+      --print elapsed
       case h of
         Nothing -> pure ()
         Just h -> writeChan toClose (h, filepath)
