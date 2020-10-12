@@ -1,4 +1,4 @@
-module Repro where
+module Main where
 
 import Prelude
 import System.Random
@@ -10,9 +10,11 @@ import Control.Monad (forever)
 import Control.Concurrent.Async
 import Control.Exception (mask_)
 
+import qualified Repro2
+
 main = do
   [dir] <- getArgs
-  repro dir
+  Repro2.repro dir
 
 repro :: FilePath -> IO ()
 repro dir' = do
