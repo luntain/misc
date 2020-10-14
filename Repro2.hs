@@ -5,13 +5,18 @@ import Prelude
 import System.Directory
 import System.FilePath
 import System.IO
-import System.Environment (getArgs)
-import Control.Monad (forever)
+import Control.Monad (forM_, forever)
 import Control.Exception
 import Control.Concurrent
 --import Data.Time
 import Control.Monad (when)
 
+-- How many `openHandle` calls in the test
+-- On a laptop:
+-- * when set to 1k, it ocasionally reproduces the failure
+-- * when set to 10k, it ocasionally fails to reproduce
+n :: Int
+n = 10000
 
 repro :: FilePath -> IO ()
 repro dir' = do
@@ -21,37 +26,41 @@ repro dir' = do
   writeList2Chan availableNames $ [ dir </> "repro" ++ show (i :: Int) | i <- [1..30]]
   toClose <- newChan :: IO (Chan (Handle, FilePath))
   maybeDelete <- newChan :: IO (Chan FilePath)
-  forkIO (getChanContents maybeDelete >>= mapM_ (keepDeleting availableNames))
-  forkIO (getChanContents toClose >>= mapM_ (keepClosing availableNames))
+  deleter <- forkIO (getChanContents maybeDelete >>= mapM_ (keepDeleting availableNames))
+  closer <- forkIO (getChanContents toClose >>= mapM_ (keepClosing availableNames))
+  resultMVar <- newEmptyMVar
   openingThread <- keepOpening availableNames toClose maybeDelete `forkFinally`
-            \case
-              Left e -> print e
-              Right () -> print "impossible"
-  forever $ do
-    threadDelay (10^3)
-    throwTo openingThread ThreadKilled
+                      putMVar resultMVar
+  interrupter <- forkIO $ forever $ do
+    threadDelay (10^2)
+    throwTo openingThread Interrupt
+
+  result <- readMVar resultMVar
+
+  -- cleanup
+  mapM_ killThread [interrupter, deleter, closer]
+  removeDirectoryRecursive dir
+
+  either throwIO (const $ putStrLn "No failures observed - success") result
 
 
 keepOpening :: Chan FilePath -> Chan (Handle, FilePath) -> Chan FilePath -> IO ()
 keepOpening availableNames toClose maybeDelete = do
   uninterruptibleMask $ \ restore -> do
-    forever $ do
-      filepath <- readChan availableNames
+    filepaths <- take n <$> getChanContents availableNames
+    forM_ filepaths $ \filepath -> do
       --now <- getCurrentTime
-      h <- (Just <$> restore (openFile filepath WriteMode)) `catch` \(e :: AsyncException) ->
-          if e == ThreadKilled then do
-            putStrLn "interrupt"
-            writeChan maybeDelete filepath >> pure Nothing
-          else do
-            putStrLn "Other exc"
-            print e
-            throw e
+      h <- (Just <$> restore (openFile filepath WriteMode)) `catch` \(_ :: Interrupt) -> do
+            writeChan maybeDelete filepath
+            pure Nothing
       --elapsed <- (`diffUTCTime` now) <$> getCurrentTime
       --print elapsed
       case h of
         Nothing -> pure ()
         Just h -> writeChan toClose (h, filepath)
 
+data Interrupt = Interrupt deriving (Show)
+instance Exception Interrupt
 
 keepDeleting :: Chan FilePath -> FilePath -> IO ()
 keepDeleting availableNames name = do
