@@ -12,4 +12,8 @@ main = do
   threadDelay $ 10^6
   putStrLn "kill"
   killThread opener
-  threadDelay $ 10^12
+  putStrLn "killed"
+
+-- on linux compiled with ghc 8.8.3 it can't kill the thread blocked on
+-- opening
+-- on linux compiled with ghc head, the thread can be killed
