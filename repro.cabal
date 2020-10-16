@@ -15,3 +15,21 @@ executable repro
     --, time
   default-language: Haskell2010
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+
+executable blocking
+  main-is: Blocking.hs
+  hs-source-dirs:
+      .
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+
+executable openBlocking
+  main-is: OpenBlocking.hs
+  hs-source-dirs:
+      .
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N

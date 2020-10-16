@@ -23,7 +23,7 @@ repro dir' = do
   let dir = dir' </> "repro"
   createDirectoryIfMissing True dir
   availableNames <- newChan :: IO (Chan FilePath)
-  writeList2Chan availableNames $ [ dir </> "repro" ++ show (i :: Int) | i <- [1..30]]
+  writeList2Chan availableNames [ dir </> "repro" ++ show (i :: Int) | i <- [1..30]]
   toClose <- newChan :: IO (Chan (Handle, FilePath))
   maybeDelete <- newChan :: IO (Chan FilePath)
   deleter <- forkIO (getChanContents maybeDelete >>= mapM_ (keepDeleting availableNames))
